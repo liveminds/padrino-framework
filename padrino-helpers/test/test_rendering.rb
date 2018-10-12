@@ -506,6 +506,31 @@ describe "Rendering" do
       assert_equal 404, status
     end
 
+    it 'should correctly resolve locale-fallbacks' do
+      create_view :foo, "I'm a fallback"
+      create_view :foo, "I'm French",  :locale => :fr
+      mock_app do
+        get("/foo") { render :foo }
+      end
+
+      I18n::Backend::Simple.send(:include, I18n::Backend::Fallbacks)
+      # By default, I18n::Backend::Fallbacks will fallback to `I18n.default_locale` everywhere; we don't want that here.
+      I18n.fallbacks.defaults = []
+      I18n.fallbacks.map(:de => :fr)
+
+      I18n.locale = :en
+      get "/foo"
+      assert_equal "I'm a fallback", body
+
+      I18n.locale = :fr
+      get "/foo"
+      assert_equal "I'm French", body
+
+      I18n.locale = :de
+      get "/foo"
+      assert_equal "I'm French", body
+    end
+
     it 'should resolve layouts from specific application' do
       require File.expand_path(File.dirname(__FILE__) + '/fixtures/apps/render')
       @app = RenderDemo2

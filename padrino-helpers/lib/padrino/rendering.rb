@@ -265,7 +265,13 @@ module Padrino
       # Return the I18n.locale if I18n is defined.
       #
       def locale
-        I18n.locale if defined?(I18n)
+        if defined?(I18n)
+          if I18n.respond_to?(:fallbacks)
+            I18n.fallbacks[I18n.locale]
+          else
+            I18n.locale
+          end
+        end
       end
 
       def resolve_layout(layout, options={})
@@ -317,8 +323,12 @@ module Padrino
         simple_content_type = [:html, :plain].include?(symbol)
         target_path, target_engine = path_and_engine(template_path)
 
-        templates.find{ |file,_| file.to_s == "#{target_path}.#{locale}.#{symbol}" } ||
-        templates.find{ |file,_| file.to_s == "#{target_path}.#{locale}" && simple_content_type } ||
+        locale_templates = Array(locale).map do |l|
+          templates.find{ |file,_| file.to_s == "#{target_path}.#{l}.#{symbol}" } ||
+          templates.find{ |file,_| file.to_s == "#{target_path}.#{l}" && simple_content_type }
+        end
+
+        locale_templates.compact.first ||
         templates.find{ |file,engine| engine == target_engine || File.extname(file.to_s) == ".#{target_engine}" } ||
         templates.find{ |file,_| file.to_s == "#{target_path}.#{symbol}" } ||
         templates.find{ |file,_| file.to_s == "#{target_path}" && simple_content_type }
